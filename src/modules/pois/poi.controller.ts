@@ -1,0 +1,125 @@
+import { Request, Response } from 'express';
+import { poiService } from './poi.service';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import logger from '../../utils/logger';
+
+export class POIController {
+  async createPOI(req: AuthRequest, res: Response): Promise<any> {
+    try {
+      // According to frontend capturing flow: lat, lng, category, name, etc.
+      const { event_id, lat, lng, category_id, name, name_en, name_hi, name_or, description, icon_url } = req.body;
+      const created_by = req.user?.id;
+
+      if (!event_id) {
+        return res.status(400).json({ error: 'event_id is required' });
+      }
+
+      if (lat === undefined || lng === undefined) {
+        return res.status(400).json({ error: 'lat and lng are required' });
+      }
+
+      const poi = await poiService.createPOI({
+        event_id,
+        latitude: lat,
+        longitude: lng,
+        category_id,
+        name_en: name_en || name, // Fallback to name if name_en is not provided explicitly
+        name_hi,
+        name_or,
+        description,
+        icon_url,
+        created_by
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: poi
+      });
+    } catch (error: any) {
+      logger.error('Error creating POI:', error);
+      return res.status(500).json({ error: 'Failed to create POI', details: error.message });
+    }
+  }
+
+  async getPOIsByEvent(req: Request, res: Response): Promise<any> {
+    try {
+      const { eventId } = req.query;
+      
+      if (!eventId || typeof eventId !== 'string') {
+          return res.status(400).json({ error: 'eventId query parameter is required' });
+      }
+
+      const pois = await poiService.getPOIsByEvent(eventId);
+      return res.status(200).json({
+        success: true,
+        data: pois
+      });
+    } catch (error: any) {
+      logger.error('Error fetching POIs:', error);
+      return res.status(500).json({ error: 'Failed to fetch POIs' });
+    }
+  }
+
+  async updatePOI(req: AuthRequest, res: Response): Promise<any> {
+    try {
+      const id = req.params.id as string;
+      const { lat, lng, ...otherData } = req.body;
+      const adminId = req.user?.id;
+
+      const existingPOI = await poiService.getPOIById(id);
+      if (!existingPOI) {
+        return res.status(404).json({ error: 'POI not found' });
+      }
+
+      if (existingPOI.created_by && existingPOI.created_by !== adminId) {
+         return res.status(403).json({ error: 'You are not authorized to modify this POI' });
+      }
+
+      const updatePayload: any = { ...otherData };
+      if (lat !== undefined) updatePayload.latitude = lat;
+      if (lng !== undefined) updatePayload.longitude = lng;
+
+      const poi = await poiService.updatePOI(id, updatePayload);
+      
+      return res.status(200).json({
+        success: true,
+        data: poi
+      });
+    } catch (error: any) {
+      logger.error('Error updating POI:', error);
+      return res.status(500).json({ error: 'Failed to update POI' });
+    }
+  }
+
+  async deletePOI(req: AuthRequest, res: Response): Promise<any> {
+    try {
+      const id = req.params.id as string;
+      const adminId = req.user?.id;
+
+      const existingPOI = await poiService.getPOIById(id);
+      if (!existingPOI) {
+        return res.status(404).json({ error: 'POI not found' });
+      }
+
+      if (existingPOI.created_by && existingPOI.created_by !== adminId) {
+         return res.status(403).json({ error: 'You are not authorized to delete this POI' });
+      }
+
+      const deleted = await poiService.deletePOI(id);
+      
+      if (!deleted) {
+         return res.status(400).json({ error: 'Failed to delete POI' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'POI deleted successfully'
+      });
+    } catch (error: any) {
+      logger.error('Error deleting POI:', error);
+      return res.status(500).json({ error: 'Failed to delete POI' });
+    }
+  }
+}
+
+export const poiController = new POIController();
