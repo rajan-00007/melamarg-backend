@@ -1,6 +1,6 @@
 services:
   api:
-    image: ${HARBOR_URL:-registry.local}/${HARBOR_PROJECT_BACKEND:-wedgo}/melamargbackend:${TAG:-latest}
+    image: ${HARBOR_URL:-registry.local}/${HARBOR_PROJECT_BACKEND:-melamarg}/melamargbackend:${TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
