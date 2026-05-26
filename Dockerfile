@@ -42,6 +42,10 @@ COPY .env* ./
 
 # Create the node user (plain alpine doesn't have it)
 RUN addgroup -S node && adduser -S node -G node
+
+# Create the storage directory and set correct ownership
+RUN mkdir -p /app/storage && chown -R node:node /app
+
 USER node
 
 # Expose the application port
