@@ -21,9 +21,8 @@ export const authService = {
       [sessionId, phone, otp, expiresAt]
     );
 
-    // Always log OTP for now (as requested)
-    console.log(`[OTP LOG] OTP for ${phone} is ${otp}`);
-    logger.info(`[OTP LOG] OTP for ${phone} is ${otp}`);
+    // OTP is generated but not logged for security reasons
+    logger.info(`[OTP LOG] OTP generated for ${phone}`);
 
     // Send OTP via MSG91
     if (process.env.NODE_ENV === 'production' || process.env.MSG91_AUTH_KEY) {
