@@ -6,6 +6,9 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json ./
 
+# Install native build tools for compiling node-gyp packages (like better-sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Install all dependencies
 RUN npm ci
 
