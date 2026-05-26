@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { query } from '../../config/database';
@@ -43,7 +43,7 @@ export class BundleService {
       fs.unlinkSync(bundlePath);
 
       // 5. Save to bundles table
-      const bundleId = uuidv4();
+      const bundleId = randomUUID();
 
       await query(
         `INSERT INTO bundles (

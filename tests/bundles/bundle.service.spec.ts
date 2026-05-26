@@ -12,7 +12,7 @@ jest.mock('@modules/bundles/metadata.generator');
 jest.mock('@modules/bundles/melapack.generator');
 jest.mock('@providers/minioProvider');
 jest.mock('fs');
-jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+jest.mock('crypto', () => ({ randomUUID: () => 'mock-uuid' }));
 jest.mock('@utils/logger', () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }));
 
 describe('BundleService', () => {

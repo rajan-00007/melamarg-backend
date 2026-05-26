@@ -1,5 +1,5 @@
 import { query } from '../../config/database';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 export interface POIRecord {
   id: string;
@@ -21,7 +21,7 @@ export interface POIRecord {
 
 export class POIRepository {
   async createPOI(poiData: Partial<POIRecord>): Promise<POIRecord> {
-    const id = uuidv4();
+    const id = randomUUID();
     const is_active = poiData.is_active !== undefined ? poiData.is_active : true;
     const status = poiData.status || 'active';
     

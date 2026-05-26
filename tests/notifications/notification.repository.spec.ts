@@ -2,7 +2,7 @@ import { notificationRepository } from '@modules/notifications/notification.repo
 import { query } from '@config/database';
 
 jest.mock('@config/database');
-jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+jest.mock('crypto', () => ({ randomUUID: () => 'mock-uuid' }));
 
 describe('NotificationRepository', () => {
   beforeEach(() => {

@@ -4,6 +4,7 @@ import { msg91Provider } from '@providers/msg91Provider';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '@utils/jwt';
 import logger from '@utils/logger';
 
+jest.mock('crypto', () => ({ randomUUID: () => 'mock-uuid' }));
 jest.mock('@config/database');
 jest.mock('@providers/msg91Provider', () => ({
   msg91Provider: { send: jest.fn() }

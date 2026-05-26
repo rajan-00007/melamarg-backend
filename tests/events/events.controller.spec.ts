@@ -5,7 +5,7 @@ import { bundleService } from '@modules/bundles/bundle.service';
 import { AuthRequest } from '@middleware/auth.middleware';
 import { Response } from 'express';
 
-jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+jest.mock('crypto', () => ({ randomUUID: () => 'mock-uuid' }));
 jest.mock('@modules/events/events.services');
 jest.mock('@modules/events/events.validation');
 jest.mock('@modules/bundles/bundle.service');

@@ -1,5 +1,5 @@
 import { query } from '../../config/database';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 export interface DeviceTokenRecord {
   id: string;
@@ -33,7 +33,7 @@ export class NotificationRepository {
       return existing.rows[0];
     }
 
-    const id = uuidv4();
+    const id = randomUUID();
     const result = await query(
       `INSERT INTO device_tokens (id, event_id, fcm_token, platform) 
        VALUES ($1, $2, $3, $4) RETURNING *`,
@@ -60,7 +60,7 @@ export class NotificationRepository {
   }
 
   async saveNotification(notification: Partial<NotificationRecord>): Promise<NotificationRecord> {
-    const id = uuidv4();
+    const id = randomUUID();
     const result = await query(
       `INSERT INTO notifications (
         id, event_id, title, message, latitude, longitude, is_emergency, created_by

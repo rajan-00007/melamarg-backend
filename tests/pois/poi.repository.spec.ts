@@ -2,7 +2,7 @@ import { POIRepository } from '@modules/pois/poi.repository';
 import { query } from '@config/database';
 
 jest.mock('@config/database');
-jest.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+jest.mock('crypto', () => ({ randomUUID: () => 'mock-uuid' }));
 
 describe('POIRepository', () => {
   let repo: POIRepository;

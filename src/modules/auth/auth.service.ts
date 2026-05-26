@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { query } from '../../config/database';
 import { msg91Provider } from '../../providers/msg91Provider';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../../utils/jwt';
@@ -8,7 +8,7 @@ export const authService = {
   async sendOtp(phone: string) {
     // Generate a 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const sessionId = uuidv4();
+    const sessionId = randomUUID();
     
     // Set expiration to 10 minutes from now
     const expiresAt = new Date();
@@ -66,7 +66,7 @@ export const authService = {
     let admin;
     if (adminResult.rows.length === 0) {
       // Create new admin
-      const adminId = uuidv4();
+      const adminId = randomUUID();
       const insertResult = await query(
         `INSERT INTO admins (id, phone) VALUES ($1, $2) RETURNING *`,
         [adminId, phone]

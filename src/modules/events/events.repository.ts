@@ -1,5 +1,5 @@
 import { query } from '../../config/database';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 export interface EventRecord {
   id: string;
@@ -31,7 +31,7 @@ export interface EventRecord {
 
 export class EventsRepository {
   async createEvent(eventData: Partial<EventRecord>): Promise<EventRecord> {
-    const id = uuidv4();
+    const id = randomUUID();
     const status = 'draft';
     
     const result = await query(
