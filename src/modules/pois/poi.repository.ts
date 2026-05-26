@@ -53,7 +53,14 @@ export class POIRepository {
   }
 
   async getPOIsByEvent(eventId: string): Promise<POIRecord[]> {
-    const result = await query(`SELECT * FROM pois WHERE event_id = $1 ORDER BY created_at DESC`, [eventId]);
+    const result = await query(
+      `SELECT p.*, c.name_en AS category_name, c.color AS category_color, c.icon AS category_icon
+       FROM pois p
+       LEFT JOIN poi_categories c ON p.category_id = c.id
+       WHERE p.event_id = $1
+       ORDER BY p.created_at DESC`,
+      [eventId]
+    );
     return result.rows;
   }
 
@@ -91,6 +98,11 @@ export class POIRepository {
   async deletePOI(id: string): Promise<boolean> {
     const result = await query(`DELETE FROM pois WHERE id = $1 RETURNING id`, [id]);
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getPOICategories(): Promise<any[]> {
+    const result = await query(`SELECT * FROM poi_categories ORDER BY name_en ASC`);
+    return result.rows;
   }
 }
 

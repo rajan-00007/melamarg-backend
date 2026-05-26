@@ -1,5 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import logger from './utils/logger';
 
@@ -8,15 +9,25 @@ import authRoutes from './modules/auth/auth.routes';
 import eventsRoutes from './modules/events/events.routes';
 import poiRoutes from './modules/pois/poi.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
+import { eventRoutesRouter, generalRoutesRouter } from './modules/routes/routes.routes';
 
 dotenv.config();
 
 const app: Application = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Dynamically allow any origin (required for credential support with wildcard-like behavior)
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(requestLogger);
 
 // Routes
@@ -24,6 +35,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/pois', poiRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/events/:eventId/routes', eventRoutesRouter);
+app.use('/api/routes', generalRoutesRouter);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {

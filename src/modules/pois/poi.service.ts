@@ -27,6 +27,10 @@ export class POIService {
   async deletePOI(id: string): Promise<boolean> {
     return await poiRepository.deletePOI(id);
   }
+
+  async getPOICategories(): Promise<any[]> {
+    return await poiRepository.getPOICategories();
+  }
 }
 
 export const poiService = new POIService();

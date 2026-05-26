@@ -120,6 +120,19 @@ export class POIController {
       return res.status(500).json({ error: 'Failed to delete POI' });
     }
   }
+
+  async getPOICategories(req: Request, res: Response): Promise<any> {
+    try {
+      const categories = await poiService.getPOICategories();
+      return res.status(200).json({
+        success: true,
+        data: categories
+      });
+    } catch (error: any) {
+      logger.error('Error fetching POI categories:', error);
+      return res.status(500).json({ error: 'Failed to fetch POI categories' });
+    }
+  }
 }
 
 export const poiController = new POIController();

@@ -6,6 +6,9 @@ import { getPOIsByEventSchema, createPOISchema, updatePOISchema, deletePOISchema
 
 const router = Router();
 
+// Get all POI categories
+router.get('/categories', poiController.getPOICategories.bind(poiController));
+
 // Get all POIs for an event
 router.get('/', validate(getPOIsByEventSchema), poiController.getPOIsByEvent.bind(poiController));
 

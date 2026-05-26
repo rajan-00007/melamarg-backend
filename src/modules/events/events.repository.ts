@@ -8,10 +8,10 @@ export interface EventRecord {
   description?: string;
   start_date?: Date;
   end_date?: Date;
-  north?: number;
-  south?: number;
-  east?: number;
-  west?: number;
+  north?: number | null;
+  south?: number | null;
+  east?: number | null;
+  west?: number | null;
   center_lat?: number;
   center_lng?: number;
   min_zoom?: number;
@@ -25,6 +25,8 @@ export interface EventRecord {
   created_by?: string;
   created_at: Date;
   updated_at: Date;
+  bundle_url?: string;
+  bundle_size?: number;
 }
 
 export class EventsRepository {
@@ -82,12 +84,22 @@ export class EventsRepository {
   }
 
   async getEventById(id: string): Promise<EventRecord | null> {
-    const result = await query(`SELECT * FROM events WHERE id = $1`, [id]);
+    const result = await query(`
+      SELECT events.*, bundles.bundle_url, bundles.bundle_size 
+      FROM events 
+      LEFT JOIN bundles ON events.current_bundle_id = bundles.id 
+      WHERE events.id = $1
+    `, [id]);
     return result.rows[0] || null;
   }
 
   async getAllEvents(): Promise<EventRecord[]> {
-    const result = await query(`SELECT * FROM events ORDER BY created_at DESC`);
+    const result = await query(`
+      SELECT events.*, bundles.bundle_url, bundles.bundle_size 
+      FROM events 
+      LEFT JOIN bundles ON events.current_bundle_id = bundles.id 
+      ORDER BY events.created_at DESC
+    `);
     return result.rows;
   }
 }

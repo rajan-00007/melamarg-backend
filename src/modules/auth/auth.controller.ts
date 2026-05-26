@@ -12,6 +12,7 @@ export const authController = {
       }
 
       const result = await authService.sendOtp(phone);
+      console.log("otp", result)
       
       return res.status(200).json({
         message: 'OTP sent successfully',
@@ -33,6 +34,14 @@ export const authController = {
 
       const result = await authService.verifyOtp(sessionId, phone, otpCode);
       
+      // Set the refresh token in a secure httpOnly cookie
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+
       return res.status(200).json({
         message: 'Verified successfully',
         ...result
@@ -50,7 +59,7 @@ export const authController = {
 
   async refreshToken(req: Request, res: Response) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = (req.cookies && req.cookies.refreshToken) || req.body.refreshToken;
       if (!refreshToken) {
         return res.status(400).json({ error: 'Refresh token is required' });
       }
@@ -68,10 +77,17 @@ export const authController = {
 
   async logout(req: Request, res: Response) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = (req.cookies && req.cookies.refreshToken) || req.body.refreshToken;
       if (refreshToken) {
         await authService.logout(refreshToken);
       }
+
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+
       return res.status(200).json({ message: 'Logged out successfully' });
     } catch (error: any) {
       logger.error(`Error during logout: ${error.message}`);

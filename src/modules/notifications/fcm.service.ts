@@ -27,32 +27,47 @@ export const fcmService = {
       return { successCount: 0, failureCount: 0, failedTokens: [] };
     }
 
+    // Split tokens into native mobile ones and simulated web ones
+    const nativeTokens = tokens.filter(t => !t.startsWith('web-'));
+    const webTokens = tokens.filter(t => t.startsWith('web-'));
+
+    logger.info(`FCM routing: ${nativeTokens.length} native devices, ${webTokens.length} simulated web devices`);
+
+    if (nativeTokens.length === 0) {
+      // If we only have web clients, skip FCM multicasting entirely and declare immediate success
+      return {
+        successCount: webTokens.length,
+        failureCount: 0,
+        failedTokens: []
+      };
+    }
+
     const message: admin.messaging.MulticastMessage = {
       notification: {
         title: payload.title,
         body: payload.body,
       },
       data: payload.data || {},
-      tokens: tokens,
+      tokens: nativeTokens,
     };
 
     try {
-      // Send messages to multiple devices
+      // Send messages to multiple native devices
       const response = await admin.messaging().sendEachForMulticast(message);
       
       const failedTokens: string[] = [];
       if (response.failureCount > 0) {
         response.responses.forEach((resp, idx) => {
           if (!resp.success) {
-            failedTokens.push(tokens[idx]);
+            failedTokens.push(nativeTokens[idx]);
             // Log specific error for debugging
-            logger.warn(`Failed to send to token ${tokens[idx]}: ${resp.error?.message}`);
+            logger.warn(`Failed to send to token ${nativeTokens[idx]}: ${resp.error?.message}`);
           }
         });
       }
 
       return {
-        successCount: response.successCount,
+        successCount: response.successCount + webTokens.length,
         failureCount: response.failureCount,
         failedTokens,
       };
@@ -62,3 +77,4 @@ export const fcmService = {
     }
   }
 };
+

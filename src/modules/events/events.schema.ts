@@ -22,16 +22,16 @@ export const updateEventSchema = z.object({
     description: z.string().optional(),
     logo_url: z.string().url('Invalid logo URL').optional().or(z.literal('')),
     banner_url: z.string().url('Invalid banner URL').optional().or(z.literal('')),
-    north: z.number().optional(),
-    south: z.number().optional(),
-    east: z.number().optional(),
-    west: z.number().optional()
+    north: z.number().nullable().optional(),
+    south: z.number().nullable().optional(),
+    east: z.number().nullable().optional(),
+    west: z.number().nullable().optional()
   }).refine((data) => {
-    // If any of the bbox coordinates is provided, all must be provided
-    const hasNorth = data.north !== undefined;
-    const hasSouth = data.south !== undefined;
-    const hasEast = data.east !== undefined;
-    const hasWest = data.west !== undefined;
+    // If any of the bbox coordinates is provided (not null/undefined), all must be provided
+    const hasNorth = data.north !== undefined && data.north !== null;
+    const hasSouth = data.south !== undefined && data.south !== null;
+    const hasEast = data.east !== undefined && data.east !== null;
+    const hasWest = data.west !== undefined && data.west !== null;
     return (hasNorth && hasSouth && hasEast && hasWest) || (!hasNorth && !hasSouth && !hasEast && !hasWest);
   }, {
     message: "If updating bounding box, all coordinates (north, south, east, west) must be provided",

@@ -12,7 +12,7 @@ export class EventsService {
     return await eventsRepository.createEvent(eventData);
   }
 
-  async updateEventBBox(id: string, bboxData: { north: number, south: number, east: number, west: number }): Promise<EventRecord | null> {
+  async updateEventBBox(id: string, bboxData: { north: number | null, south: number | null, east: number | null, west: number | null }): Promise<EventRecord | null> {
     return await eventsRepository.updateEvent(id, {
       north: bboxData.north,
       south: bboxData.south,

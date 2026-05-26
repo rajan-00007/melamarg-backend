@@ -22,6 +22,7 @@ export const authService = {
     );
 
     // Always log OTP for now (as requested)
+    console.log(`[OTP LOG] OTP for ${phone} is ${otp}`);
     logger.info(`[OTP LOG] OTP for ${phone} is ${otp}`);
 
     // Send OTP via MSG91
@@ -29,7 +30,7 @@ export const authService = {
         await msg91Provider.send(phone, `Your MelaMarg OTP is ${otp}`, { otp });
     }
 
-    return { sessionId };
+    return { sessionId, otp };
   },
 
   async verifyOtp(sessionId: string, phone: string, otpCode: string) {
