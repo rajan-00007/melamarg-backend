@@ -1,144 +1,143 @@
 name: Build and Deploy MelaMarg Backend Docker Image
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+    push:
+        branches:
+            - main
 
 jobs:
-  build:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+    build:
+        name: Build and Push Docker Image
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              id: checkout
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
 
-      - name: Set up Docker Buildx
-        id: setup_buildx
-        uses: docker/setup-buildx-action@v3
+            - name: Set up Docker Buildx
+              id: setup_buildx
+              uses: docker/setup-buildx-action@v3
 
-      - name: Login to Harbor
-        id: login_harbor
-        env:
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-        run: echo $HARBOR_PASSWORD | docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
+            - name: Login to Harbor
+              id: login_harbor
+              env:
+                  HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+              run: echo $HARBOR_PASSWORD | docker login ${{ secrets.HARBOR_URL }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
 
-      - name: Set environment variables
-        run: |
-          echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-          echo "HARBOR_IMAGE=${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend" >> $GITHUB_ENV
+            - name: Set environment variables
+              run: |
+                  echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+                  echo "HARBOR_IMAGE=${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend" >> $GITHUB_ENV
 
-      - name: Build Docker images
-        id: build_docker_images
-        run: |
-          cat <<EOF > .env
-          NODE_ENV=production
-          PORT=${{ secrets.DEV_PORT }}
-          DB_USER=${{ secrets.DEV_DB_USER }}
-          DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
-          DB_HOST=${{ secrets.DEV_DB_HOST }}
-          DB_PORT=${{ secrets.DEV_DB_PORT }}
-          DB_NAME=${{ secrets.DEV_DB_NAME }}
-          JWT_SECRET=${{ secrets.DEV_JWT_SECRET }}
-          JWT_EXPIRES_IN=${{ secrets.DEV_JWT_EXPIRES_IN }}
-          JWT_REFRESH_SECRET=${{ secrets.DEV_JWT_REFRESH_SECRET }}
-          JWT_REFRESH_EXPIRES_IN=${{ secrets.DEV_JWT_REFRESH_EXPIRES_IN }}
-          MINIO_ENDPOINT=${{ secrets.DEV_MINIO_ENDPOINT }}
-          MINIO_PORT=${{ secrets.DEV_MINIO_PORT }}
-          MINIO_USE_SSL=${{ secrets.DEV_MINIO_USE_SSL }}
-          MINIO_ACCESS_KEY=${{ secrets.DEV_MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY=${{ secrets.DEV_MINIO_SECRET_KEY }}
-          MINIO_BUCKET=${{ secrets.DEV_MINIO_BUCKET }}
-          MSG91_AUTH_KEY=${{ secrets.DEV_MSG91_AUTH_KEY }}
-          MSG91_TEMPLATE_ID=${{ secrets.DEV_MSG91_TEMPLATE_ID }}
-          MSG91_SENDER_ID=${{ secrets.DEV_MSG91_SENDER_ID }}
-          FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}
-          FIREBASE_CLIENT_EMAIL=${{ secrets.DEV_FIREBASE_CLIENT_EMAIL }}
-          FIREBASE_PRIVATE_KEY="${{ secrets.DEV_FIREBASE_PRIVATE_KEY }}"
-          HARBOR_URL=${{ secrets.HARBOR_URL }}
-          HARBOR_PASSWORD=${{ secrets.HARBOR_PASSWORD }}
-          HARBOR_USERNAME=${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PROJECT=${{ secrets.HARBOR_PROJECT_BACKEND }}
-          TAG=${{env.TAG}}
-          EOF
-          echo "Building with TAG: ${{ env.TAG }}"
-          echo "Image: $HARBOR_URL/$HARBOR_PROJECT/melamargbackend:${{ env.TAG }}"
-          docker compose -f docker-compose.yml build \
-            --build-arg TAG=${{ env.TAG }}
-        env:
-          HARBOR_URL: ${{ secrets.HARBOR_URL }}
-          HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT_BACKEND }}
-          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-          TAG: ${{ env.TAG }}
+            - name: Build Docker images
+              id: build_docker_images
+              run: |
+                  cat <<EOF > .env
+                  NODE_ENV=production
+                  PORT=${{ secrets.DEV_PORT }}
+                  DB_USER=${{ secrets.DEV_DB_USER }}
+                  DB_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+                  DB_HOST=${{ secrets.DEV_DB_HOST }}
+                  DB_PORT=${{ secrets.DEV_DB_PORT }}
+                  DB_NAME=${{ secrets.DEV_DB_NAME }}
+                  JWT_SECRET=${{ secrets.DEV_JWT_SECRET }}
+                  JWT_EXPIRES_IN=${{ secrets.DEV_JWT_EXPIRES_IN }}
+                  JWT_REFRESH_SECRET=${{ secrets.DEV_JWT_REFRESH_SECRET }}
+                  JWT_REFRESH_EXPIRES_IN=${{ secrets.DEV_JWT_REFRESH_EXPIRES_IN }}
+                  MINIO_ENDPOINT=${{ secrets.DEV_MINIO_ENDPOINT }}
+                  MINIO_PORT=${{ secrets.DEV_MINIO_PORT }}
+                  MINIO_USE_SSL=${{ secrets.DEV_MINIO_USE_SSL }}
+                  MINIO_ACCESS_KEY=${{ secrets.DEV_MINIO_ACCESS_KEY }}
+                  MINIO_SECRET_KEY=${{ secrets.DEV_MINIO_SECRET_KEY }}
+                  MINIO_BUCKET=${{ secrets.DEV_MINIO_BUCKET }}
+                  MSG91_AUTH_KEY=${{ secrets.DEV_MSG91_AUTH_KEY }}
+                  MSG91_TEMPLATE_ID=${{ secrets.DEV_MSG91_TEMPLATE_ID }}
+                  MSG91_SENDER_ID=${{ secrets.DEV_MSG91_SENDER_ID }}
+                  FIREBASE_PROJECT_ID=${{ secrets.DEV_FIREBASE_PROJECT_ID }}
+                  FIREBASE_CLIENT_EMAIL=${{ secrets.DEV_FIREBASE_CLIENT_EMAIL }}
+                  FIREBASE_PRIVATE_KEY="${{ secrets.DEV_FIREBASE_PRIVATE_KEY }}"
+                  HARBOR_URL=${{ secrets.HARBOR_URL }}
+                  HARBOR_PASSWORD=${{ secrets.HARBOR_PASSWORD }}
+                  HARBOR_USERNAME=${{ secrets.HARBOR_USERNAME }}
+                  HARBOR_PROJECT=${{ secrets.HARBOR_PROJECT_BACKEND }}
+                  TAG=${{env.TAG}}
+                  EOF
+                  echo "Building with TAG: ${{ env.TAG }}"
+                  echo "Image: $HARBOR_URL/$HARBOR_PROJECT/melamargbackend:${{ env.TAG }}"
+                  docker compose -f docker-compose.yml build \
+                    --build-arg TAG=${{ env.TAG }}
+              env:
+                  HARBOR_URL: ${{ secrets.HARBOR_URL }}
+                  HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT_BACKEND }}
+                  HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+                  HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+                  TAG: ${{ env.TAG }}
 
-      - name: Verify Docker image
-        id: verify_docker_image
-        run: docker images ${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:${TAG}
-        env:
-          TAG: ${{ env.TAG }}
+            - name: Verify Docker image
+              id: verify_docker_image
+              run: docker images ${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:${TAG}
+              env:
+                  TAG: ${{ env.TAG }}
 
-      - name: Cache Trivy DB
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/trivy
-          key: ${{ runner.os }}-trivy-db
-          restore-keys: |
-            ${{ runner.os }}-trivy-db
+            - name: Cache Trivy DB
+              uses: actions/cache@v5
+              with:
+                  path: ~/.cache/trivy
+                  key: ${{ runner.os }}-trivy-db
+                  restore-keys: |
+                      ${{ runner.os }}-trivy-db
 
-      - name: Trivy Scan Docker images
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:${{env.TAG}}
-        timeout-minutes: 30
+            - name: Trivy Scan Docker images
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:${{env.TAG}}
+              timeout-minutes: 30
 
-      - name: Push Docker images
-        id: push_docker_images
-        run: |
-          docker compose -f docker-compose.yml push
-        env:
-          HARBOR_URL: ${{ secrets.HARBOR_URL }}
-          HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT_BACKEND }}
-          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
-          TAG: ${{ env.TAG }}
+            - name: Push Docker images
+              id: push_docker_images
+              run: |
+                  docker compose -f docker-compose.yml push
+              env:
+                  HARBOR_URL: ${{ secrets.HARBOR_URL }}
+                  HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT_BACKEND }}
+                  HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+                  HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+                  TAG: ${{ env.TAG }}
 
-      # CD steps for auto deployment
-      - name: Checkout GitOps repository
-        uses: actions/checkout@v5
-        with:
-          repository: healthligence-s/healthligence-infra
-          ref: main
-          token: ${{ secrets.GITOPS_TOKEN }}
-          path: healthligence-infra
+            # CD steps for auto deployment
+            - name: Checkout GitOps repository
+              uses: actions/checkout@v5
+              with:
+                  repository: healthligence-s/healthligence-infra
+                  ref: main
+                  token: ${{ secrets.GITOPS_TOKEN }}
+                  path: healthligence-infra
 
-      - name: Update Kubernetes manifests
-        run: |
-          cd healthligence-infra/melamarg/melamarg-backend
+            - name: Update Kubernetes manifests
+              run: |
+                  cd healthligence-infra/melamarg/melamarg-backend
 
-          # Configure Git
-          git config --global user.email "${{ secrets.GITOPS_EMAIL }}"
-          git config --global user.name "${{ secrets.GITOPS_USERNAME }}"
+                  # Configure Git
+                  git config --global user.email "${{ secrets.GITOPS_EMAIL }}"
+                  git config --global user.name "${{ secrets.GITOPS_USERNAME }}"
 
-          # Update only the image tag in the Deployment
-          sed -i "s+${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:.*+${{ secrets.HARBOR_URL }}/${{ secrets.HARBOR_PROJECT_BACKEND }}/melamargbackend:${TAG}+g" melamarg-backend.yaml
+                  # Update only the image tag in the Deployment
+                  sed -i "s+${{ secrets.HARBOR_URL }}/melamarg/melamargbackend:.*+${{ secrets.HARBOR_URL }}/melamarg/melamargbackend:${TAG}+g" melamarg-backend.yaml
 
-          # Commit and push changes
-          git add melamarg-backend.yaml
-          git commit -m "chore: Update melamarg backend image tag to ${TAG}"
-          git push origin main
-        env:
-          TAG: ${{ env.TAG }}
+                  # Commit and push changes
+                  git add melamarg-backend.yaml
+                  git commit -m "chore: Update melamarg backend image tag to ${TAG}"
+                  git push origin main
+              env:
+                  TAG: ${{ env.TAG }}
 
-      - name: Cleanup GitOps repository
-        if: always()
-        run: |
-          rm -rf healthligence-infra
+            - name: Cleanup GitOps repository
+              if: always()
+              run: |
+                  rm -rf healthligence-infra
 
-      - name: Logout from Harbor
-        id: logout_harbor
-        run: docker logout ${{ secrets.HARBOR_URL }}
+            - name: Logout from Harbor
+              id: logout_harbor
+              run: docker logout ${{ secrets.HARBOR_URL }}
