@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { poiService } from './poi.service';
-import { AuthRequest } from '../../middleware/auth.middleware';
+import { AuthRequest, getOptionalUser } from '../../middleware/auth.middleware';
+import { eventsService } from '../events/events.services';
 import logger from '../../utils/logger';
 
 export class POIController {
@@ -16,6 +17,15 @@ export class POIController {
 
       if (lat === undefined || lng === undefined) {
         return res.status(400).json({ error: 'lat and lng are required' });
+      }
+
+      const existingEvent = await eventsService.getEventById(event_id);
+      if (!existingEvent) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+
+      if (req.user?.role !== 'super_admin' && existingEvent.created_by !== created_by) {
+        return res.status(403).json({ error: 'You are not authorized to add POIs to this event' });
       }
 
       const poi = await poiService.createPOI({
@@ -49,6 +59,14 @@ export class POIController {
           return res.status(400).json({ error: 'eventId query parameter is required' });
       }
 
+      const user = getOptionalUser(req);
+      if (user && user.role !== 'super_admin') {
+        const existingEvent = await eventsService.getEventById(eventId);
+        if (existingEvent && existingEvent.created_by !== user.id) {
+          return res.status(403).json({ error: 'You are not authorized to access POIs for this event' });
+        }
+      }
+
       const pois = await poiService.getPOIsByEvent(eventId);
       return res.status(200).json({
         success: true,
@@ -71,7 +89,8 @@ export class POIController {
         return res.status(404).json({ error: 'POI not found' });
       }
 
-      if (existingPOI.created_by && existingPOI.created_by !== adminId) {
+      const existingEvent = await eventsService.getEventById(existingPOI.event_id);
+      if (req.user?.role !== 'super_admin' && existingPOI.created_by !== adminId && existingEvent?.created_by !== adminId) {
          return res.status(403).json({ error: 'You are not authorized to modify this POI' });
       }
 
@@ -101,7 +120,8 @@ export class POIController {
         return res.status(404).json({ error: 'POI not found' });
       }
 
-      if (existingPOI.created_by && existingPOI.created_by !== adminId) {
+      const existingEvent = await eventsService.getEventById(existingPOI.event_id);
+      if (req.user?.role !== 'super_admin' && existingPOI.created_by !== adminId && existingEvent?.created_by !== adminId) {
          return res.status(403).json({ error: 'You are not authorized to delete this POI' });
       }
 

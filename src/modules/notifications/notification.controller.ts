@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { notificationService } from './notification.service';
-import { AuthRequest } from '../../middleware/auth.middleware';
+import { AuthRequest, getOptionalUser } from '../../middleware/auth.middleware';
+import { eventsService } from '../events/events.services';
 import logger from '../../utils/logger';
 
 export class NotificationController {
@@ -35,6 +36,15 @@ export class NotificationController {
         return res.status(400).json({ error: 'eventId, title, and message are required' });
       }
 
+      const existingEvent = await eventsService.getEventById(eventId);
+      if (!existingEvent) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+
+      if (req.user?.role !== 'super_admin' && existingEvent.created_by !== created_by) {
+        return res.status(403).json({ error: 'You are not authorized to send notifications for this event' });
+      }
+
       const result = await notificationService.sendEventNotification({
         event_id: eventId,
         title,
@@ -63,6 +73,14 @@ export class NotificationController {
 
       if (!eventId) {
         return res.status(400).json({ error: 'eventId is required' });
+      }
+
+      const user = getOptionalUser(req);
+      if (user && user.role !== 'super_admin') {
+        const existingEvent = await eventsService.getEventById(eventId as string);
+        if (existingEvent && existingEvent.created_by !== user.id) {
+          return res.status(403).json({ error: 'You are not authorized to access notifications for this event' });
+        }
       }
 
       const notifications = await notificationService.getNotificationsByEvent(eventId as string);

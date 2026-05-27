@@ -2,8 +2,10 @@ import { POIController } from '@modules/pois/poi.controller';
 import { poiService } from '@modules/pois/poi.service';
 import { Request, Response } from 'express';
 import { AuthRequest } from '@middleware/auth.middleware';
+import { eventsService } from '@modules/events/events.services';
 
 jest.mock('@modules/pois/poi.service');
+jest.mock('@modules/events/events.services');
 jest.mock('@utils/logger', () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }));
 
 describe('POIController', () => {
@@ -16,6 +18,7 @@ describe('POIController', () => {
     req = { body: {}, params: {}, query: {}, user: { id: 'admin1', phone: '123', role: 'admin' } };
     res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     jest.clearAllMocks();
+    (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'e', created_by: 'admin1' });
   });
 
   describe('createPOI', () => {
@@ -76,7 +79,8 @@ describe('POIController', () => {
 
     it('should return 403 if unauthorized', async () => {
       req.params = { id: 'p' };
-      (poiService.getPOIById as jest.Mock).mockResolvedValue({ id: 'p', created_by: 'other' });
+      (poiService.getPOIById as jest.Mock).mockResolvedValue({ id: 'p', created_by: 'other', event_id: 'e' });
+      (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'e', created_by: 'other' });
       await controller.updatePOI(req as AuthRequest, res as Response);
       expect(res.status).toHaveBeenCalledWith(403);
     });
@@ -127,7 +131,8 @@ describe('POIController', () => {
 
     it('should return 403 if unauthorized', async () => {
       req.params = { id: 'p' };
-      (poiService.getPOIById as jest.Mock).mockResolvedValue({ id: 'p', created_by: 'other' });
+      (poiService.getPOIById as jest.Mock).mockResolvedValue({ id: 'p', created_by: 'other', event_id: 'e' });
+      (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'e', created_by: 'other' });
       await controller.deletePOI(req as AuthRequest, res as Response);
       expect(res.status).toHaveBeenCalledWith(403);
     });

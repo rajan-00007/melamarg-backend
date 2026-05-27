@@ -30,3 +30,18 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     return res.status(500).json({ error: 'Authentication failed' });
   }
 };
+
+export const getOptionalUser = (req: Request): any => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = verifyToken(token);
+      return decoded || null;
+    }
+  } catch (error) {
+    // Ignore error
+  }
+  return null;
+};
+

@@ -21,6 +21,7 @@ describe('EventsController', () => {
     req = { body: {}, params: {}, user: { id: 'admin1', phone: '123', role: 'admin' } };
     res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     jest.clearAllMocks();
+    (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'evt1', created_by: 'admin1' });
   });
 
   describe('createEvent', () => {
@@ -165,6 +166,13 @@ describe('EventsController', () => {
       req.user = undefined;
       await controller.publishEvent(req as AuthRequest, res as Response);
       expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    it('should return 403 if user not authorized to publish', async () => {
+      req.params = { id: 'evt1' };
+      (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'evt1', created_by: 'other' });
+      await controller.publishEvent(req as AuthRequest, res as Response);
+      expect(res.status).toHaveBeenCalledWith(403);
     });
 
     it('should return 400 if validation fails', async () => {

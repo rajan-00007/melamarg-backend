@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AuthRequest } from '../../middleware/auth.middleware';
+import { AuthRequest, getOptionalUser } from '../../middleware/auth.middleware';
 import { eventsService } from './events.services';
 import { validateEventForPublish } from './events.validation';
 import { bundleService } from '../bundles/bundle.service';
@@ -46,7 +46,7 @@ export class EventsController {
         return res.status(404).json({ error: 'Event not found' });
       }
 
-      if (existingEvent.created_by && existingEvent.created_by !== adminId) {
+      if (req.user?.role !== 'super_admin' && existingEvent.created_by !== adminId) {
         return res.status(403).json({ error: 'You are not authorized to modify this event' });
       }
 
@@ -79,7 +79,13 @@ export class EventsController {
  
   async getAllEvents(req: Request, res: Response): Promise<any> {
     try {
-      const events = await eventsService.getAllEvents();
+      const user = getOptionalUser(req);
+      let events = await eventsService.getAllEvents();
+      
+      if (user && user.role !== 'super_admin') {
+        events = events.filter(event => event.created_by === user.id);
+      }
+
       return res.status(200).json({
         success: true,
         data: events
@@ -99,6 +105,11 @@ export class EventsController {
         return res.status(404).json({ error: 'Event not found' });
       }
 
+      const user = getOptionalUser(req);
+      if (user && user.role !== 'super_admin' && event.created_by !== user.id) {
+        return res.status(403).json({ error: 'You are not authorized to access this event' });
+      }
+
       return res.status(200).json({
         success: true,
         data: event
@@ -116,6 +127,15 @@ export class EventsController {
 
       if (!adminId) {
         return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const existingEvent = await eventsService.getEventById(id);
+      if (!existingEvent) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+
+      if (req.user?.role !== 'super_admin' && existingEvent.created_by !== adminId) {
+        return res.status(403).json({ error: 'You are not authorized to publish this event' });
       }
 
       // 1-4. Validate

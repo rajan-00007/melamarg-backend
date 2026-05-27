@@ -2,8 +2,10 @@ import { NotificationController } from '@modules/notifications/notification.cont
 import { notificationService } from '@modules/notifications/notification.service';
 import { Request, Response } from 'express';
 import { AuthRequest } from '@middleware/auth.middleware';
+import { eventsService } from '@modules/events/events.services';
 
 jest.mock('@modules/notifications/notification.service');
+jest.mock('@modules/events/events.services');
 jest.mock('@utils/logger', () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }));
 
 describe('NotificationController', () => {
@@ -13,9 +15,10 @@ describe('NotificationController', () => {
 
   beforeEach(() => {
     controller = new NotificationController();
-    req = { body: {}, params: {} };
+    req = { body: {}, params: {}, user: { id: 'u1', phone: '12', role: 'admin' } };
     res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     jest.clearAllMocks();
+    (eventsService.getEventById as jest.Mock).mockResolvedValue({ id: 'e', created_by: 'u1' });
   });
 
   describe('registerToken', () => {
