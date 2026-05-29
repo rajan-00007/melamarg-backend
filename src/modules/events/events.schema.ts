@@ -7,7 +7,8 @@ export const createEventSchema = z.object({
     end_date: z.string().optional(),
     description: z.string().optional(),
     logo_url: z.string().url('Invalid logo URL').optional().or(z.literal('')),
-    banner_url: z.string().url('Invalid banner URL').optional().or(z.literal(''))
+    banner_url: z.string().url('Invalid banner URL').optional().or(z.literal('')),
+    metadata: z.record(z.any()).optional()
   })
 });
 
@@ -25,7 +26,8 @@ export const updateEventSchema = z.object({
     north: z.number().nullable().optional(),
     south: z.number().nullable().optional(),
     east: z.number().nullable().optional(),
-    west: z.number().nullable().optional()
+    west: z.number().nullable().optional(),
+    metadata: z.record(z.any()).optional()
   }).refine((data) => {
     // If any of the bbox coordinates is provided (not null/undefined), all must be provided
     const hasNorth = data.north !== undefined && data.north !== null;

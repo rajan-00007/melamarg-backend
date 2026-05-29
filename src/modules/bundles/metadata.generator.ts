@@ -10,11 +10,14 @@ export const generateMetadataJson = async (eventId: string, version: number, out
     throw new Error('Event not found for metadata generation');
   }
 
+  const parsedMeta = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : (event.metadata || {});
+
   const metadata = {
     eventId: event.id,
     eventName: event.name,
     bundleVersion: version,
     generatedAt: new Date().toISOString(),
+    metadata: parsedMeta,
     bbox: {
       north: event.north,
       south: event.south,

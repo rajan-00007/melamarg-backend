@@ -3,6 +3,7 @@ import { AuthRequest, getOptionalUser } from '../../middleware/auth.middleware';
 import { eventsService } from './events.services';
 import { validateEventForPublish } from './events.validation';
 import { bundleService } from '../bundles/bundle.service';
+import { getHaversineDistance } from '../../utils/geo';
 import logger from '../../utils/logger';
 
 export class EventsController {
@@ -84,6 +85,43 @@ export class EventsController {
       
       if (user && user.role !== 'super_admin') {
         events = events.filter(event => event.created_by === user.id);
+      } else if (!user) {
+        // Standard public user coordinates query
+        const { latitude, longitude } = req.query;
+        if (latitude !== undefined && longitude !== undefined) {
+          const userLat = Number(latitude);
+          const userLng = Number(longitude);
+          
+          events = events.filter(event => {
+            // Retrieve metadata object
+            const meta = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : (event.metadata || {});
+            const radius = meta.visibility ? Number(meta.visibility) : 0;
+            
+            // If visibility radius is 0 or null, always show
+            if (radius <= 0) {
+              return true;
+            }
+
+            // Extract center coordinates, or compute them on-the-fly from the bbox if they are null in the database
+            let lat = event.center_lat !== null && event.center_lat !== undefined ? Number(event.center_lat) : null;
+            let lng = event.center_lng !== null && event.center_lng !== undefined ? Number(event.center_lng) : null;
+
+            if (lat === null && event.north !== null && event.south !== null) {
+              lat = (Number(event.north) + Number(event.south)) / 2;
+            }
+            if (lng === null && event.east !== null && event.west !== null) {
+              lng = (Number(event.east) + Number(event.west)) / 2;
+            }
+
+            // If we still can't calculate center coordinates (missing both center and bbox), always show
+            if (lat === null || lng === null) {
+              return true;
+            }
+            
+            const dist = getHaversineDistance(userLat, userLng, lat, lng);
+            return dist <= radius;
+          });
+        }
       }
 
       return res.status(200).json({

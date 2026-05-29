@@ -13,11 +13,15 @@ export class EventsService {
   }
 
   async updateEventBBox(id: string, bboxData: { north: number | null, south: number | null, east: number | null, west: number | null }): Promise<EventRecord | null> {
+    const center_lat = (bboxData.north !== null && bboxData.south !== null) ? (bboxData.north + bboxData.south) / 2 : null;
+    const center_lng = (bboxData.east !== null && bboxData.west !== null) ? (bboxData.east + bboxData.west) / 2 : null;
     return await eventsRepository.updateEvent(id, {
       north: bboxData.north,
       south: bboxData.south,
       east: bboxData.east,
       west: bboxData.west,
+      center_lat,
+      center_lng,
     });
   }
 

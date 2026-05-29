@@ -12,8 +12,8 @@ export interface EventRecord {
   south?: number | null;
   east?: number | null;
   west?: number | null;
-  center_lat?: number;
-  center_lng?: number;
+  center_lat?: number | null;
+  center_lng?: number | null;
   min_zoom?: number;
   max_zoom?: number;
   logo_url?: string;
@@ -27,18 +27,20 @@ export interface EventRecord {
   updated_at: Date;
   bundle_url?: string;
   bundle_size?: number;
+  metadata?: Record<string, any> | string;
 }
 
 export class EventsRepository {
   async createEvent(eventData: Partial<EventRecord>): Promise<EventRecord> {
     const id = randomUUID();
     const status = 'draft';
+    const metadata = eventData.metadata ? (typeof eventData.metadata === 'string' ? eventData.metadata : JSON.stringify(eventData.metadata)) : '{}';
     
     const result = await query(
       `INSERT INTO events (
         id, name, slug, description, start_date, end_date, 
-        logo_url, banner_url, status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+        logo_url, banner_url, status, created_by, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING *`,
       [
         id,
@@ -51,6 +53,7 @@ export class EventsRepository {
         eventData.banner_url,
         status,
         eventData.created_by,
+        metadata
       ]
     );
 
@@ -62,7 +65,12 @@ export class EventsRepository {
     const values: any[] = [];
     let paramIndex = 1;
 
-    for (const [key, value] of Object.entries(updateData)) {
+    const dataToUpdate = { ...updateData };
+    if (dataToUpdate.metadata && typeof dataToUpdate.metadata === 'object') {
+      dataToUpdate.metadata = JSON.stringify(dataToUpdate.metadata);
+    }
+
+    for (const [key, value] of Object.entries(dataToUpdate)) {
       if (value !== undefined) {
         setClause.push(`${key} = $${paramIndex}`);
         values.push(value);
