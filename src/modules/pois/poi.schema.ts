@@ -17,7 +17,8 @@ export const createPOISchema = z.object({
     name_hi: z.string().optional(),
     name_or: z.string().optional(),
     description: z.string().optional(),
-    icon_url: z.string().url('Invalid icon URL').optional().or(z.literal(''))
+    icon_url: z.string().url('Invalid icon URL').optional().or(z.literal('')),
+    path_name: z.string().optional()
   })
 });
 
@@ -34,7 +35,8 @@ export const updatePOISchema = z.object({
     name_hi: z.string().optional(),
     name_or: z.string().optional(),
     description: z.string().optional(),
-    icon_url: z.string().url('Invalid icon URL').optional().or(z.literal(''))
+    icon_url: z.string().url('Invalid icon URL').optional().or(z.literal('')),
+    path_name: z.string().optional()
   })
 });
 

@@ -15,6 +15,7 @@ export interface POIRecord {
   is_active: boolean;
   status: string;
   created_by?: string;
+  path_name?: string;
   created_at: Date;
   updated_at: Date;
 }
@@ -29,8 +30,8 @@ export class POIRepository {
       `INSERT INTO pois (
         id, event_id, category_id, name_en, name_hi, name_or, 
         description, latitude, longitude, icon_url, 
-        is_active, status, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+        is_active, status, created_by, path_name
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
       RETURNING *`,
       [
         id,
@@ -46,6 +47,7 @@ export class POIRepository {
         is_active,
         status,
         poiData.created_by,
+        poiData.path_name,
       ]
     );
 

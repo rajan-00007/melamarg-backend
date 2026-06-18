@@ -74,7 +74,8 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
           eventId,
           dbStartNodeId,
           dbEndNodeId,
-          distance
+          distance,
+          edge.path_name || null
         );
         createdEdges.push(createdEdge);
       }

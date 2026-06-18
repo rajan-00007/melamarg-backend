@@ -8,7 +8,7 @@ export class POIController {
   async createPOI(req: AuthRequest, res: Response): Promise<any> {
     try {
       // According to frontend capturing flow: lat, lng, category, name, etc.
-      const { event_id, lat, lng, category_id, name, name_en, name_hi, name_or, description, icon_url } = req.body;
+      const { event_id, lat, lng, category_id, name, name_en, name_hi, name_or, description, icon_url, path_name } = req.body;
       const created_by = req.user?.id;
 
       if (!event_id) {
@@ -38,7 +38,8 @@ export class POIController {
         name_or,
         description,
         icon_url,
-        created_by
+        created_by,
+        path_name
       });
 
       return res.status(201).json({

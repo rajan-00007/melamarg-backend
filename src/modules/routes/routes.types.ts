@@ -19,6 +19,7 @@ export interface RouteEdge {
   end_node_id: string;
   distance: number;
   is_bidirectional: boolean;
+  path_name?: string | null;
   created_at: Date;
 }
 

@@ -11,6 +11,7 @@ export interface CreateRouteNodeDto {
 export interface CreateRouteEdgeDto {
   startNodeId: string;
   endNodeId: string;
+  path_name?: string | null;
 }
 
 export interface CreateRouteGraphDto {

@@ -26,13 +26,14 @@ export const createEdge = async (
   eventId: string,
   startNodeId: string,
   endNodeId: string,
-  distance: number
+  distance: number,
+  pathName: string | null = null
 ): Promise<RouteEdge> => {
   const result = await client.query(
-    `INSERT INTO route_edges (event_id, start_node_id, end_node_id, distance)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO route_edges (event_id, start_node_id, end_node_id, distance, path_name)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [eventId, startNodeId, endNodeId, distance]
+    [eventId, startNodeId, endNodeId, distance, pathName]
   );
   return result.rows[0];
 };
