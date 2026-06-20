@@ -19,6 +19,7 @@ export interface NotificationRecord {
   is_emergency: boolean;
   created_by?: string;
   created_at: Date;
+  advisory_id?: string | null;
 }
 
 export class NotificationRepository {
@@ -59,12 +60,13 @@ export class NotificationRepository {
     await query(`DELETE FROM device_tokens WHERE fcm_token IN (${placeholders})`, tokens);
   }
 
-  async saveNotification(notification: Partial<NotificationRecord>): Promise<NotificationRecord> {
+  async saveNotification(notification: Partial<NotificationRecord>, client?: any): Promise<NotificationRecord> {
     const id = randomUUID();
-    const result = await query(
+    const q = client ? client.query.bind(client) : query;
+    const result = await q(
       `INSERT INTO notifications (
-        id, event_id, title, message, latitude, longitude, is_emergency, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        id, event_id, title, message, latitude, longitude, is_emergency, created_by, advisory_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
       [
         id,
         notification.event_id,
@@ -73,7 +75,8 @@ export class NotificationRepository {
         notification.latitude,
         notification.longitude,
         notification.is_emergency || false,
-        notification.created_by
+        notification.created_by,
+        notification.advisory_id || null
       ]
     );
 
