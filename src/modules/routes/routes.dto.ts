@@ -6,6 +6,7 @@ export interface CreateRouteNodeDto {
   node_type?: string;
   poi_id?: string | null;
   is_entrance?: boolean;
+  is_parking?: boolean;
 }
 
 export interface CreateRouteEdgeDto {

@@ -11,6 +11,7 @@ import poiRoutes from './modules/pois/poi.routes';
 import notificationRoutes from './modules/notifications/notification.routes';
 import { eventRoutesRouter, generalRoutesRouter } from './modules/routes/routes.routes';
 import { eventAdvisoriesRouter, generalAdvisoriesRouter } from './modules/advisories/advisories.routes';
+import parkingRoutes from './modules/parking/parking.routes';
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use('/api/events/:eventId/routes', eventRoutesRouter);
 app.use('/api/routes', generalRoutesRouter);
 app.use('/api/events/:eventId/advisories', eventAdvisoriesRouter);
 app.use('/api/advisories', generalAdvisoriesRouter);
+app.use('/api/parking', parkingRoutes);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {

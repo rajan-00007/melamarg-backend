@@ -42,11 +42,22 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
         longitude REAL,
         icon_url TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS parking_lots (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        latitude REAL,
+        longitude REAL,
+        total_spots INTEGER,
+        price_per_hour REAL,
+        landmark TEXT
+      );
     `);
 
     // Fetch data from PostgreSQL
     const poisResult = await query(`SELECT * FROM pois WHERE event_id = $1`, [eventId]);
     const categoriesResult = await query(`SELECT * FROM poi_categories`);
+    const parkingResult = await query(`SELECT * FROM parking_lots WHERE event_id = $1 AND is_active = true`, [eventId]);
 
     // Insert categories
     const insertCategory = db.prepare(`
@@ -85,6 +96,28 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
     });
 
     insertPoiMany(poisResult.rows);
+
+    // Insert Parking Lots
+    const insertParking = db.prepare(`
+      INSERT INTO parking_lots (id, name, latitude, longitude, total_spots, price_per_hour, landmark)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertParkingMany = db.transaction((lots) => {
+      for (const lot of lots) {
+        insertParking.run(
+          lot.id,
+          lot.name,
+          Number(lot.latitude),
+          Number(lot.longitude),
+          lot.total_spots,
+          Number(lot.price_per_hour),
+          lot.landmark
+        );
+      }
+    });
+
+    insertParkingMany(parkingResult.rows);
 
     logger.info(`Generated pois.db at ${dbPath}`);
     return dbPath;

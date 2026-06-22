@@ -3,6 +3,7 @@ import * as routeRepo from './routes.repository';
 import { calculateDistance } from './routes.utils';
 import { CreateRouteGraphDto } from './routes.dto';
 import { RouteGraph } from './routes.types';
+import { parkingRepository } from '../parking/parking.repository';
 
 export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<any> => {
   const { eventId, nodes, edges } = payload;
@@ -35,7 +36,8 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
         node.longitude,
         node.node_type || 'path',
         node.poi_id || null,
-        node.is_entrance || false
+        node.is_entrance || false,
+        node.is_parking || false
       );
       createdNodes.push(createdNode);
       
@@ -107,6 +109,59 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
     await routeRepo.updateEventRouteStatus(client, eventId, true);
 
     await client.query('COMMIT');
+
+    // 5. Synchronize parking lots based on route nodes marked as parking
+    try {
+      const existingLots = await parkingRepository.getParkingLotsByEvent(eventId);
+      const parkingNodes = createdNodes.filter(n => n.is_parking === true);
+
+      // Create or update lots for current parking nodes
+      for (const node of parkingNodes) {
+        const matchedLot = existingLots.find(lot =>
+          Math.abs(Number(lot.latitude) - Number(node.latitude)) < 0.00001 &&
+          Math.abs(Number(lot.longitude) - Number(node.longitude)) < 0.00001
+        );
+
+        if (!matchedLot) {
+          const defaultName = node.name || 'Route Parking';
+          await parkingRepository.createParkingLot({
+            event_id: eventId,
+            name: defaultName,
+            latitude: Number(node.latitude),
+            longitude: Number(node.longitude),
+            total_spots: 50,
+            available_spots: 50,
+            price_per_hour: 0.00,
+            landmark: 'Auto-created from Route Node',
+            is_active: true
+          });
+        } else if (matchedLot.landmark === 'Auto-created from Route Node') {
+          // If the lot was auto-created and the name has changed, update it
+          if (matchedLot.name !== node.name && node.name) {
+            await parkingRepository.updateParkingLot(matchedLot.id, {
+              name: node.name
+            });
+          }
+        }
+      }
+
+      // Clean up auto-created lots that are no longer matching any active parking nodes
+      for (const lot of existingLots) {
+        if (lot.landmark === 'Auto-created from Route Node') {
+          const matchesAnyNode = parkingNodes.some(node =>
+            Math.abs(Number(lot.latitude) - Number(node.latitude)) < 0.00001 &&
+            Math.abs(Number(lot.longitude) - Number(node.longitude)) < 0.00001
+          );
+
+          if (!matchesAnyNode) {
+            await parkingRepository.deleteParkingLot(lot.id);
+          }
+        }
+      }
+    } catch (syncError) {
+      // Log sync errors but don't fail the entire route graph creation response
+      console.error('Failed to sync parking lots from route nodes:', syncError);
+    }
 
 
     return {

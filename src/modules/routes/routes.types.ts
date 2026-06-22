@@ -7,6 +7,7 @@ export interface RouteNode {
   node_type: string;
   poi_id?: string | null;
   is_entrance?: boolean;
+  is_parking?: boolean;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
