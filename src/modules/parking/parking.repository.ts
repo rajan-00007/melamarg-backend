@@ -102,6 +102,14 @@ export class ParkingRepository {
   }
 
   async updateParkingLot(id: string, updateData: Partial<ParkingLotRecord>): Promise<ParkingLotRecord | null> {
+    if (updateData.total_spots !== undefined) {
+      const currentLot = await this.getParkingLotById(id);
+      if (currentLot) {
+        const diff = Number(updateData.total_spots) - Number(currentLot.total_spots);
+        updateData.available_spots = Math.max(0, Number(currentLot.available_spots) + diff);
+      }
+    }
+
     const setClause: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
