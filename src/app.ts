@@ -32,7 +32,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(requestLogger);
-
+ 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
