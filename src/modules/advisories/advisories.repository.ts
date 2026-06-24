@@ -11,8 +11,8 @@ export class AdvisoriesRepository {
     const id = randomUUID();
     const result = await client.query(
       `INSERT INTO traffic_advisories (
-        id, event_id, title, message, start_node_id, end_node_id, is_active, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, true, $7) RETURNING *`,
+        id, event_id, title, message, start_node_id, end_node_id, advisory_type, status_tag, is_active, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9) RETURNING *`,
       [
         id,
         advisory.eventId,
@@ -20,6 +20,8 @@ export class AdvisoriesRepository {
         advisory.message,
         advisory.startNodeId || null,
         advisory.endNodeId || null,
+        advisory.advisory_type || 'road',
+        advisory.status_tag || 'general',
         advisory.createdBy || null,
       ]
     );
@@ -41,6 +43,18 @@ export class AdvisoriesRepository {
     return result.rows[0];
   }
 
+  async saveAdvisoryZone(
+    client: PoolClient,
+    advisoryId: string,
+    zoneId: string
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO advisory_zones (advisory_id, zone_id)
+       VALUES ($1, $2)`,
+      [advisoryId, zoneId]
+    );
+  }
+
   async getAdvisoriesByEvent(eventId: string): Promise<TrafficAdvisoryResponse[]> {
     const advisoriesResult = await query(
       `SELECT * FROM traffic_advisories WHERE event_id = $1 ORDER BY created_at DESC`,
@@ -59,7 +73,15 @@ export class AdvisoriesRepository {
       [eventId]
     );
 
-    return this.mapAdvisoriesWithEdges(advisoriesResult.rows, edgesResult.rows);
+    const zonesResult = await query(
+      `SELECT az.advisory_id, az.zone_id 
+       FROM advisory_zones az 
+       JOIN traffic_advisories ta ON az.advisory_id = ta.id 
+       WHERE ta.event_id = $1`,
+      [eventId]
+    );
+
+    return this.mapAdvisoriesWithEdgesAndZones(advisoriesResult.rows, edgesResult.rows, zonesResult.rows);
   }
 
   async getActiveAdvisoriesByEvent(eventId: string): Promise<TrafficAdvisoryResponse[]> {
@@ -82,7 +104,15 @@ export class AdvisoriesRepository {
       [eventId]
     );
 
-    return this.mapAdvisoriesWithEdges(advisoriesResult.rows, edgesResult.rows);
+    const zonesResult = await query(
+      `SELECT az.advisory_id, az.zone_id 
+       FROM advisory_zones az 
+       JOIN traffic_advisories ta ON az.advisory_id = ta.id 
+       WHERE ta.event_id = $1 AND ta.is_active = true`,
+      [eventId]
+    );
+
+    return this.mapAdvisoriesWithEdgesAndZones(advisoriesResult.rows, edgesResult.rows, zonesResult.rows);
   }
 
   async getAdvisoryById(id: string): Promise<TrafficAdvisoryResponse | null> {
@@ -100,9 +130,15 @@ export class AdvisoriesRepository {
       [id]
     );
 
+    const zonesResult = await query(
+      `SELECT zone_id FROM advisory_zones WHERE advisory_id = $1`,
+      [id]
+    );
+
     return {
       ...advisoryResult.rows[0],
       edges: edgesResult.rows,
+      zoneIds: zonesResult.rows.map((row) => row.zone_id),
     };
   }
 
@@ -129,7 +165,7 @@ export class AdvisoriesRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
-  private mapAdvisoriesWithEdges(advisories: any[], edges: any[]): TrafficAdvisoryResponse[] {
+  private mapAdvisoriesWithEdgesAndZones(advisories: any[], edges: any[], zones: any[]): TrafficAdvisoryResponse[] {
     const edgesGroupedByAdvisory = new Map<string, { edge_id: string; status: 'blocked' | 'recommended' }[]>();
     
     edges.forEach((edge) => {
@@ -141,9 +177,17 @@ export class AdvisoriesRepository {
       edgesGroupedByAdvisory.set(edge.advisory_id, group);
     });
 
+    const zonesGroupedByAdvisory = new Map<string, string[]>();
+    zones.forEach((z) => {
+      const group = zonesGroupedByAdvisory.get(z.advisory_id) || [];
+      group.push(z.zone_id);
+      zonesGroupedByAdvisory.set(z.advisory_id, group);
+    });
+
     return advisories.map((adv) => ({
       ...adv,
       edges: edgesGroupedByAdvisory.get(adv.id) || [],
+      zoneIds: zonesGroupedByAdvisory.get(adv.id) || [],
     }));
   }
 }

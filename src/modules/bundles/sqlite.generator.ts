@@ -40,7 +40,8 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
         description TEXT,
         latitude REAL,
         longitude REAL,
-        icon_url TEXT
+        icon_url TEXT,
+        zone_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS parking_lots (
@@ -50,7 +51,35 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
         longitude REAL,
         total_spots INTEGER,
         price_per_hour REAL,
-        landmark TEXT
+        landmark TEXT,
+        zone_id TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS zones (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        boundary TEXT NOT NULL,
+        allow_pedestrians INTEGER DEFAULT 1,
+        allow_2wheelers INTEGER DEFAULT 1,
+        allow_cars INTEGER DEFAULT 1,
+        advisory TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS advisory_zones (
+        id TEXT PRIMARY KEY,
+        advisory_id TEXT NOT NULL,
+        zone_id TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS event_highlights (
+        id TEXT PRIMARY KEY,
+        event_id TEXT,
+        title TEXT NOT NULL,
+        description TEXT,
+        location TEXT,
+        time TEXT,
+        image_url TEXT,
+        highlight_date TEXT NOT NULL
       );
     `);
 
@@ -58,6 +87,17 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
     const poisResult = await query(`SELECT * FROM pois WHERE event_id = $1`, [eventId]);
     const categoriesResult = await query(`SELECT * FROM poi_categories`);
     const parkingResult = await query(`SELECT * FROM parking_lots WHERE event_id = $1 AND is_active = true`, [eventId]);
+    const zonesResult = await query(`SELECT * FROM zones WHERE event_id = $1`, [eventId]);
+    const advisoryZonesResult = await query(
+      `SELECT az.* FROM advisory_zones az 
+       JOIN zones z ON az.zone_id = z.id 
+       WHERE z.event_id = $1`,
+      [eventId]
+    );
+    const highlightsResult = await query(
+      `SELECT * FROM event_highlights WHERE event_id = $1`,
+      [eventId]
+    );
 
     // Insert categories
     const insertCategory = db.prepare(`
@@ -75,8 +115,8 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
 
     // Insert POIs
     const insertPoi = db.prepare(`
-      INSERT INTO pois (id, category_id, name_en, name_hi, name_or, description, latitude, longitude, icon_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pois (id, category_id, name_en, name_hi, name_or, description, latitude, longitude, icon_url, zone_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertPoiMany = db.transaction((pois) => {
@@ -90,7 +130,8 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
           poi.description, 
           poi.latitude, 
           poi.longitude,
-          poi.icon_url
+          poi.icon_url,
+          poi.zone_id || null
         );
       }
     });
@@ -99,8 +140,8 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
 
     // Insert Parking Lots
     const insertParking = db.prepare(`
-      INSERT INTO parking_lots (id, name, latitude, longitude, total_spots, price_per_hour, landmark)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO parking_lots (id, name, latitude, longitude, total_spots, price_per_hour, landmark, zone_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertParkingMany = db.transaction((lots) => {
@@ -112,12 +153,72 @@ export const generateSqliteDb = async (eventId: string, outputDir: string): Prom
           Number(lot.longitude),
           lot.total_spots,
           Number(lot.price_per_hour),
-          lot.landmark
+          lot.landmark,
+          lot.zone_id || null
         );
       }
     });
 
     insertParkingMany(parkingResult.rows);
+
+    // Insert Zones
+    const insertZone = db.prepare(`
+      INSERT INTO zones (id, name, boundary, allow_pedestrians, allow_2wheelers, allow_cars, advisory)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertZoneMany = db.transaction((zs) => {
+      for (const z of zs) {
+        insertZone.run(
+          z.id,
+          z.name,
+          typeof z.boundary === 'string' ? z.boundary : JSON.stringify(z.boundary),
+          z.allow_pedestrians ? 1 : 0,
+          z.allow_2wheelers ? 1 : 0,
+          z.allow_cars ? 1 : 0,
+          z.advisory || null
+        );
+      }
+    });
+
+    insertZoneMany(zonesResult.rows);
+
+    // Insert Advisory Zones
+    const insertAdvisoryZone = db.prepare(`
+      INSERT INTO advisory_zones (id, advisory_id, zone_id)
+      VALUES (?, ?, ?)
+    `);
+
+    const insertAdvisoryZoneMany = db.transaction((azs) => {
+      for (const az of azs) {
+        insertAdvisoryZone.run(az.id, az.advisory_id, az.zone_id);
+      }
+    });
+
+    insertAdvisoryZoneMany(advisoryZonesResult.rows);
+
+    // Insert Event Highlights
+    const insertHighlight = db.prepare(`
+      INSERT INTO event_highlights (id, event_id, title, description, location, time, image_url, highlight_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertHighlightMany = db.transaction((highlights) => {
+      for (const hl of highlights) {
+        insertHighlight.run(
+          hl.id,
+          hl.event_id,
+          hl.title,
+          hl.description || null,
+          hl.location || null,
+          hl.time || null,
+          hl.image_url || null,
+          hl.highlight_date
+        );
+      }
+    });
+
+    insertHighlightMany(highlightsResult.rows);
 
     logger.info(`Generated pois.db at ${dbPath}`);
     return dbPath;

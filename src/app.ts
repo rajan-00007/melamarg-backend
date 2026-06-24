@@ -12,6 +12,8 @@ import notificationRoutes from './modules/notifications/notification.routes';
 import { eventRoutesRouter, generalRoutesRouter } from './modules/routes/routes.routes';
 import { eventAdvisoriesRouter, generalAdvisoriesRouter } from './modules/advisories/advisories.routes';
 import parkingRoutes from './modules/parking/parking.routes';
+import zonesRoutes from './modules/zones/zones.routes';
+import { eventHighlightsRouter, generalHighlightsRouter } from './modules/highlights/highlights.routes';
 
 dotenv.config();
 
@@ -43,6 +45,9 @@ app.use('/api/routes', generalRoutesRouter);
 app.use('/api/events/:eventId/advisories', eventAdvisoriesRouter);
 app.use('/api/advisories', generalAdvisoriesRouter);
 app.use('/api/parking', parkingRoutes);
+app.use('/api/events/:eventId/zones', zonesRoutes);
+app.use('/api/events/:eventId/highlights', eventHighlightsRouter);
+app.use('/api/highlights', generalHighlightsRouter);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {

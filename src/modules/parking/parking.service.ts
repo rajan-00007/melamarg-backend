@@ -1,5 +1,6 @@
 import { parkingRepository, ParkingLotRecord, ParkingReservationRecord } from './parking.repository';
 import { query } from '../../config/database';
+import { zonesService } from '../zones/zones.service';
 
 export class ParkingService {
   async getParkingLots(eventId: string): Promise<ParkingLotRecord[]> {
@@ -12,12 +13,36 @@ export class ParkingService {
     if (lotData.latitude === undefined || lotData.longitude === undefined) {
       throw new Error('Coordinates (latitude and longitude) are required');
     }
+
+    try {
+      const zoneId = await zonesService.resolveZoneIdForCoordinate(
+        lotData.event_id,
+        Number(lotData.latitude),
+        Number(lotData.longitude)
+      );
+      lotData.zone_id = zoneId;
+    } catch (err) {
+      // Don't crash creation
+    }
+
     return parkingRepository.createParkingLot(lotData);
   }
 
   async updateParkingLot(id: string, updateData: Partial<ParkingLotRecord>): Promise<ParkingLotRecord | null> {
     const lot = await parkingRepository.getParkingLotById(id);
     if (!lot) throw new Error('Parking lot not found');
+
+    if (updateData.latitude !== undefined || updateData.longitude !== undefined) {
+      const lat = updateData.latitude !== undefined ? Number(updateData.latitude) : Number(lot.latitude);
+      const lng = updateData.longitude !== undefined ? Number(updateData.longitude) : Number(lot.longitude);
+      try {
+        const zoneId = await zonesService.resolveZoneIdForCoordinate(lot.event_id, lat, lng);
+        updateData.zone_id = zoneId;
+      } catch (err) {
+        // Don't crash update
+      }
+    }
+
     return parkingRepository.updateParkingLot(id, updateData);
   }
 

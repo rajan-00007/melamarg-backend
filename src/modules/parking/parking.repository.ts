@@ -12,6 +12,7 @@ export interface ParkingLotRecord {
   price_per_hour: number;
   landmark?: string;
   is_active: boolean;
+  zone_id?: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -63,8 +64,8 @@ export class ParkingRepository {
       `INSERT INTO parking_lots (
         id, event_id, name, latitude, longitude, 
         total_spots, available_spots, price_per_hour, 
-        landmark, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+        landmark, is_active, zone_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
       RETURNING *`,
       [
         id,
@@ -76,7 +77,8 @@ export class ParkingRepository {
         available_spots,
         price,
         lotData.landmark,
-        is_active
+        is_active,
+        lotData.zone_id || null
       ]
     );
 

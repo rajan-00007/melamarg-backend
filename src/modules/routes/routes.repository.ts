@@ -11,13 +11,14 @@ export const createNode = async (
   nodeType: string = 'path',
   poiId: string | null = null,
   isEntrance: boolean = false,
-  isParking: boolean = false
+  isParking: boolean = false,
+  zoneId: string | null = null
 ): Promise<RouteNode> => {
   const result = await client.query(
-    `INSERT INTO route_nodes (event_id, name, latitude, longitude, node_type, poi_id, is_entrance, is_parking)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO route_nodes (event_id, name, latitude, longitude, node_type, poi_id, is_entrance, is_parking, zone_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [eventId, name, latitude, longitude, nodeType, poiId, isEntrance, isParking]
+    [eventId, name, latitude, longitude, nodeType, poiId, isEntrance, isParking, zoneId]
   );
   return result.rows[0];
 };

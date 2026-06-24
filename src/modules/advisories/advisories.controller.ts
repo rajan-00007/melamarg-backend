@@ -9,7 +9,7 @@ export const createAdvisory = async (
 ): Promise<void> => {
   try {
     const eventId = req.params.eventId as string;
-    const { title, message, startNodeId, endNodeId, edges } = req.body;
+    const { title, message, startNodeId, endNodeId, edges, zoneIds, advisory_type, status_tag } = req.body;
     
     // Auth middleware attaches admin ID as req.adminId or similar
     const createdBy = (req as any).admin?.id || null;
@@ -23,6 +23,9 @@ export const createAdvisory = async (
       startNodeId,
       endNodeId,
       edges,
+      zoneIds,
+      advisory_type,
+      status_tag,
       createdBy,
     });
 

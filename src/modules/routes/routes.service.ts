@@ -4,6 +4,8 @@ import { calculateDistance } from './routes.utils';
 import { CreateRouteGraphDto } from './routes.dto';
 import { RouteGraph } from './routes.types';
 import { parkingRepository } from '../parking/parking.repository';
+import { zonesService } from '../zones/zones.service';
+import { isPointInPolygon } from '../../utils/geo';
 
 export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<any> => {
   const { eventId, nodes, edges } = payload;
@@ -25,9 +27,26 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
     const createdNodes = [];
     const idMap = new Map<string, string>(); // maps incoming temp ID -> created DB UUID
 
+    // Fetch zones for the event beforehand so we can resolve client-side/in-memory efficiently
+    const zones = await zonesService.getZonesByEvent(eventId);
+
     // 2. Save all nodes sequentially
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
+      
+      // Check which zone this node belongs to
+      let matchedZoneId = null;
+      if (zones.length > 0) {
+        const point = { latitude: Number(node.latitude), longitude: Number(node.longitude) };
+        for (const zone of zones) {
+          const boundary = typeof zone.boundary === 'string' ? JSON.parse(zone.boundary) : zone.boundary;
+          if (isPointInPolygon(point, boundary)) {
+            matchedZoneId = zone.id;
+            break;
+          }
+        }
+      }
+
       const createdNode = await routeRepo.createNode(
         client,
         eventId,
@@ -37,7 +56,8 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
         node.node_type || 'path',
         node.poi_id || null,
         node.is_entrance || false,
-        node.is_parking || false
+        node.is_parking || false,
+        matchedZoneId
       );
       createdNodes.push(createdNode);
       

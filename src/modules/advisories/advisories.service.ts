@@ -40,6 +40,18 @@ export class AdvisoriesService {
         }
       }
 
+      // 2b. Save advisory zones mapping
+      if (payload.zoneIds && payload.zoneIds.length > 0) {
+        logger.info(`advisories.service: Saving ${payload.zoneIds.length} zones`);
+        for (const zoneId of payload.zoneIds) {
+          await advisoriesRepository.saveAdvisoryZone(
+            client,
+            advisory.id,
+            zoneId
+          );
+        }
+      }
+
       // 3. Create a linked warning notification so it shows up in the alerts feed
       logger.info(`advisories.service: Saving linked notification with advisory_id: ${advisory.id} (type: ${typeof advisory.id})`);
       await notificationRepository.saveNotification({
@@ -53,7 +65,7 @@ export class AdvisoriesService {
       logger.info('advisories.service: Saved linked notification successfully');
 
       await client.query('COMMIT');
-      savedAdvisory = { ...advisory, edges: savedEdges };
+      savedAdvisory = { ...advisory, edges: savedEdges, zoneIds: payload.zoneIds || [] };
 
     } catch (error) {
       await client.query('ROLLBACK');

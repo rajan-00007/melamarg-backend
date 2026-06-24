@@ -9,6 +9,7 @@ export interface RouteNode {
   is_entrance?: boolean;
   is_parking?: boolean;
   is_active: boolean;
+  zone_id?: string | null;
   created_at: Date;
   updated_at: Date;
 }
