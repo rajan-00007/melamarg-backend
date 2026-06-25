@@ -1,11 +1,12 @@
 import { Client } from "minio";
+import logger from "../utils/logger";
 
 const endPoint = process.env.MINIO_ENDPOINT;
 const accessKey = process.env.MINIO_ACCESS_KEY;
 const secretKey = process.env.MINIO_SECRET_KEY;
 
 if (!endPoint) {
-    console.error("❌ MINIO_ENDPOINT is not defined in environment variables");
+    logger.error("❌ MINIO_ENDPOINT is not defined in environment variables");
 }
 
 export const minioClient = new Client({

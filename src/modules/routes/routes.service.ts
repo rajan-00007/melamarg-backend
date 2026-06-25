@@ -6,6 +6,7 @@ import { RouteGraph } from './routes.types';
 import { parkingRepository } from '../parking/parking.repository';
 import { zonesService } from '../zones/zones.service';
 import { isPointInPolygon } from '../../utils/geo';
+import logger from '../../utils/logger';
 
 export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<any> => {
   const { eventId, nodes, edges } = payload;
@@ -180,7 +181,7 @@ export const createRouteGraph = async (payload: CreateRouteGraphDto): Promise<an
       }
     } catch (syncError) {
       // Log sync errors but don't fail the entire route graph creation response
-      console.error('Failed to sync parking lots from route nodes:', syncError);
+      logger.error('Failed to sync parking lots from route nodes:', syncError);
     }
 
 

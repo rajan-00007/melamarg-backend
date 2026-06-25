@@ -8,10 +8,10 @@ const levels = {
   debug: 4,
 };
 
+const isLocal = process.env.NODE_ENV === 'development';
+
 const level = () => {
-  const env = process.env.NODE_ENV || 'development';
-  const isDevelopment = env === 'development';
-  return isDevelopment ? 'debug' : 'warn';
+  return isLocal ? 'debug' : 'warn';
 };
 
 const colors = {
@@ -41,6 +41,7 @@ const logger = winston.createLogger({
   levels,
   format,
   transports,
+  silent: !isLocal,
 });
 
 export default logger;

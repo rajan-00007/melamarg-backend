@@ -1,6 +1,7 @@
 import 'multer';
 import { minioClient } from "../config/minio";
 import { randomUUID } from "crypto";
+import logger from "../utils/logger";
 
 const BUCKET = process.env.MINIO_BUCKET!;
 
@@ -42,12 +43,12 @@ export async function uploadLocalFile(filePath: string, mimetype: string, folder
     const exists = await minioClient.bucketExists(BUCKET);
     if (!exists) {
       await minioClient.makeBucket(BUCKET);
-      console.log(`Bucket '${BUCKET}' created successfully.`);
+      logger.info(`Bucket '${BUCKET}' created successfully.`);
     }
   } catch (err: any) {
     // If we get an error here, it could be Access Denied for bucket creation/checking.
     // We will log it but continue to let fPutObject throw the true error.
-    console.warn(`Bucket check/create failed: ${err.message}`);
+    logger.warn(`Bucket check/create failed: ${err.message}`);
   }
 
   await minioClient.fPutObject(

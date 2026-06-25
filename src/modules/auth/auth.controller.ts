@@ -12,7 +12,7 @@ export const authController = {
       }
 
       const result = await authService.sendOtp(phone);
-      console.log("otp", result)
+      logger.info(`otp: ${JSON.stringify(result)}`);
       
       return res.status(200).json({
         message: 'OTP sent successfully',
