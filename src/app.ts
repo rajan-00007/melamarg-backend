@@ -14,6 +14,7 @@ import { eventAdvisoriesRouter, generalAdvisoriesRouter } from './modules/adviso
 import parkingRoutes from './modules/parking/parking.routes';
 import zonesRoutes from './modules/zones/zones.routes';
 import { eventHighlightsRouter, generalHighlightsRouter } from './modules/highlights/highlights.routes';
+import meetupRoutes from './modules/meetup/meetup.routes';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/parking', parkingRoutes);
 app.use('/api/events/:eventId/zones', zonesRoutes);
 app.use('/api/events/:eventId/highlights', eventHighlightsRouter);
 app.use('/api/highlights', generalHighlightsRouter);
+app.use('/api/meetup', meetupRoutes);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {
