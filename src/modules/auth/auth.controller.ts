@@ -35,10 +35,11 @@ export const authController = {
       const result = await authService.verifyOtp(sessionId, phone, otpCode);
       
       // Set the refresh token in a secure httpOnly cookie
+      const isProduction = process.env.NODE_ENV === 'production';
       res.cookie('refreshToken', result.refreshToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProduction, 
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       });
 
@@ -82,10 +83,11 @@ export const authController = {
         await authService.logout(refreshToken);
       }
 
+      const isProduction = process.env.NODE_ENV === 'production';
       res.clearCookie('refreshToken', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax'
       });
 
       return res.status(200).json({ message: 'Logged out successfully' });
