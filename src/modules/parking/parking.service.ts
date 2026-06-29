@@ -52,26 +52,39 @@ export class ParkingService {
     return parkingRepository.deleteParkingLot(id);
   }
 
-  async reserveSpot(parkingLotId: string, deviceId: string): Promise<ParkingReservationRecord> {
+  async reserveSpot(parkingLotId: string, deviceId: string, slotsCount = 1): Promise<ParkingReservationRecord> {
     if (!parkingLotId) throw new Error('Parking lot ID is required');
+    if (slotsCount < 1 || slotsCount > 4) {
+      throw new Error('You can only reserve between 1 and 4 spots per booking');
+    }
     
     // Get the event details to resolve the prefix
     const lot = await parkingRepository.getParkingLotById(parkingLotId);
     if (!lot) throw new Error('Parking lot not found');
     
-    const eventResult = await query(`SELECT name FROM events WHERE id = $1`, [lot.event_id]);
+    const eventResult = await query(`SELECT name, slug FROM events WHERE id = $1`, [lot.event_id]);
     const event = eventResult.rows[0];
     
-    let prefix = 'PURI'; // Default prefix
+    let prefix = 'PARK'; // Safe generic fallback for "Parking" if event is not found
     if (event && event.name) {
-      // Create prefix from first 4 letters of event name (e.g. "Bali Yatra" -> "BALI")
-      const cleanedName = event.name.replace(/[^a-zA-Z]/g, '');
-      if (cleanedName.length >= 3) {
-        prefix = cleanedName.substring(0, 4).toUpperCase();
+      // 1. Try cleaning the event name to alphabetical characters
+      const alphaOnly = event.name.replace(/[^a-zA-Z]/g, '').toUpperCase();
+      if (alphaOnly.length >= 3) {
+        prefix = alphaOnly.substring(0, 4);
+      } else {
+        // 2. Fallback: Clean the event slug
+        const slugClean = (event.slug || '').replace(/[^a-zA-Z]/g, '').toUpperCase();
+        if (slugClean.length >= 3) {
+          prefix = slugClean.substring(0, 4);
+        } else {
+          // 3. Fallback: Alphanumeric name padded with 'X'
+          const alphaNum = event.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+          prefix = alphaNum.padEnd(4, 'X').substring(0, 4);
+        }
       }
     }
 
-    return parkingRepository.createReservation(parkingLotId, deviceId, prefix);
+    return parkingRepository.createReservation(parkingLotId, deviceId, prefix, slotsCount);
   }
 
   async cancelReservation(token: string): Promise<ParkingReservationRecord> {

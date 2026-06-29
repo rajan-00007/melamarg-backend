@@ -49,8 +49,8 @@ export class ParkingController {
 
   async reserveSpot(req: Request, res: Response): Promise<void> {
     try {
-      const { parkingLotId, deviceId } = req.body;
-      const reservation = await parkingService.reserveSpot(parkingLotId, deviceId);
+      const { parkingLotId, deviceId, slotsCount } = req.body;
+      const reservation = await parkingService.reserveSpot(parkingLotId, deviceId, slotsCount !== undefined ? Number(slotsCount) : 1);
       res.status(201).json({ success: true, data: reservation });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });

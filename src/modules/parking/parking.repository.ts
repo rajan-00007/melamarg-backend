@@ -1,4 +1,4 @@
-import { query } from '../../config/database';
+import pool, { query } from '../../config/database';
 import { randomUUID } from 'crypto';
 
 export interface ParkingLotRecord {
@@ -24,6 +24,7 @@ export interface ParkingReservationRecord {
   device_id?: string;
   status: 'reserved' | 'completed' | 'expired' | 'cancelled';
   expires_at: Date;
+  slots_count: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -35,11 +36,11 @@ export class ParkingRepository {
       WITH expired_res AS (
         UPDATE parking_reservations
         SET status = 'expired', updated_at = NOW()
-        WHERE status = 'reserved' AND expires_at < NOW()
-        RETURNING parking_lot_id
+        WHERE status = 'reserved' AND expires_at < (NOW() AT TIME ZONE 'UTC')
+        RETURNING parking_lot_id, COALESCE(slots_count, 1) as slots_count
       ),
       counts AS (
-        SELECT parking_lot_id, COUNT(*) as qty
+        SELECT parking_lot_id, SUM(slots_count) as qty
         FROM expired_res
         GROUP BY parking_lot_id
       )
@@ -142,14 +143,27 @@ export class ParkingRepository {
   }
 
   // Create a reservation (with transactional logic to decrement spots)
-  async createReservation(parkingLotId: string, deviceId: string, customTokenPrefix = 'PURI'): Promise<ParkingReservationRecord> {
+  async createReservation(parkingLotId: string, deviceId: string, customTokenPrefix = 'PURI', slotsCount = 1): Promise<ParkingReservationRecord> {
     // 1. Perform cleanup first to free up spots
     await this.cleanupExpiredReservations();
 
-    const client = await query('BEGIN'); // Start transaction manually to ensure spot decrement safety
+    const client = await pool.connect();
     try {
-      // 2. Fetch lot details and lock row for update
-      const lotResult = await query(
+      await client.query('BEGIN');
+
+      // 2. Enforce global user active booking limit (max 4 slots overall)
+      const activeResResult = await client.query(
+        `SELECT COALESCE(SUM(slots_count), 0) as active_slots FROM parking_reservations
+         WHERE device_id = $1 AND status = 'reserved' AND expires_at > (NOW() AT TIME ZONE 'UTC')`,
+        [deviceId]
+      );
+      const activeSlots = Number(activeResResult.rows[0]?.active_slots || 0);
+      if (activeSlots + slotsCount > 4) {
+        throw new Error(`You have reached the maximum reservation limit of 4 slots. Current active booked slots: ${activeSlots}.`);
+      }
+
+      // 3. Fetch lot details and lock row for update
+      const lotResult = await client.query(
         `SELECT * FROM parking_lots WHERE id = $1 FOR UPDATE`, 
         [parkingLotId]
       );
@@ -158,50 +172,82 @@ export class ParkingRepository {
         throw new Error('Parking lot not found');
       }
 
-      if (lot.available_spots <= 0) {
-        throw new Error('No spots left in this parking lot');
+      if (lot.available_spots < slotsCount) {
+        throw new Error(`Not enough spots left in this parking lot. Available: ${lot.available_spots}.`);
       }
 
-      // 3. Decrement available spots
-      await query(
+      // 4. Decrement available spots
+      await client.query(
         `UPDATE parking_lots 
-         SET available_spots = available_spots - 1, updated_at = NOW() 
+         SET available_spots = available_spots - $2, updated_at = NOW() 
          WHERE id = $1`,
-        [parkingLotId]
+        [parkingLotId, slotsCount]
       );
 
-      // 4. Generate Reservation Token: e.g. PURI-8842-X
-      const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4 digit number
+      // 5. Generate unique Reservation Token: e.g. PURI-8842-X
+      let token = '';
+      let isUnique = false;
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      const randomChar = chars[Math.floor(Math.random() * chars.length)];
-      const token = `${customTokenPrefix.toUpperCase()}-${randomDigits}-${randomChar}`;
+      let attempts = 0;
+
+      while (!isUnique && attempts < 10) {
+        attempts++;
+        const randomDigits = Math.floor(1000 + Math.random() * 9000); // 4 digit number
+        const randomChar = chars[Math.floor(Math.random() * chars.length)];
+        
+        // If we fail to find unique after multiple attempts, make it even longer/more unique
+        if (attempts > 5) {
+          const randomChar2 = chars[Math.floor(Math.random() * chars.length)];
+          token = `${customTokenPrefix.toUpperCase()}-${randomDigits}-${randomChar}${randomChar2}`;
+        } else {
+          token = `${customTokenPrefix.toUpperCase()}-${randomDigits}-${randomChar}`;
+        }
+
+        const checkResult = await client.query(
+          `SELECT id FROM parking_reservations WHERE token = $1`,
+          [token]
+        );
+        if (checkResult.rows.length === 0) {
+          isUnique = true;
+        }
+      }
+
+      if (!isUnique) {
+        // Fallback to timestamp + random letters to guarantee uniqueness in extreme case
+        const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        token = `${customTokenPrefix.toUpperCase()}-${Date.now().toString().slice(-4)}-${suffix}`;
+      }
 
       const resId = randomUUID();
       const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // Valid for 20 minutes
 
-      // 5. Insert reservation record
-      const resResult = await query(
+      // 6. Insert reservation record
+      const resResult = await client.query(
         `INSERT INTO parking_reservations (
-          id, parking_lot_id, token, device_id, expires_at, status
-        ) VALUES ($1, $2, $3, $4, $5, 'reserved') 
+          id, parking_lot_id, token, device_id, expires_at, status, slots_count
+        ) VALUES ($1, $2, $3, $4, $5, 'reserved', $6) 
         RETURNING *`,
-        [resId, parkingLotId, token, deviceId, expiresAt]
+        [resId, parkingLotId, token, deviceId, expiresAt, slotsCount]
       );
 
-      await query('COMMIT');
+      await client.query('COMMIT');
       return resResult.rows[0];
     } catch (err) {
-      await query('ROLLBACK');
+      await client.query('ROLLBACK');
       throw err;
+    } finally {
+      client.release();
     }
   }
 
   // Cancel reservation manually (increments available spots)
   async cancelReservation(token: string): Promise<ParkingReservationRecord> {
-    await query('BEGIN');
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+      
       // 1. Fetch reservation details and lock row for update
-      const resResult = await query(
+      const resResult = await client.query(
         `SELECT * FROM parking_reservations WHERE token = $1 FOR UPDATE`,
         [token]
       );
@@ -219,7 +265,7 @@ export class ParkingRepository {
       const targetStatus = isExpired ? 'expired' : 'cancelled';
 
       // 2. Set status to cancelled / expired
-      const updatedResResult = await query(
+      const updatedResResult = await client.query(
         `UPDATE parking_reservations 
          SET status = $1, updated_at = NOW() 
          WHERE token = $2 RETURNING *`,
@@ -227,25 +273,28 @@ export class ParkingRepository {
       );
 
       // 3. Increment available spots (only if it wasn't already expired and counted by background cleanup)
-      const lotResult = await query(
+      const lotResult = await client.query(
         `SELECT * FROM parking_lots WHERE id = $1`,
         [reservation.parking_lot_id]
       );
       const lot = lotResult.rows[0];
       if (lot) {
-        await query(
+        const slotsToRelease = Number(reservation.slots_count || 1);
+        await client.query(
           `UPDATE parking_lots 
-           SET available_spots = LEAST(total_spots, available_spots + 1), updated_at = NOW() 
+           SET available_spots = LEAST(total_spots, available_spots + $2), updated_at = NOW() 
            WHERE id = $1`,
-          [reservation.parking_lot_id]
+          [reservation.parking_lot_id, slotsToRelease]
         );
       }
 
-      await query('COMMIT');
+      await client.query('COMMIT');
       return updatedResResult.rows[0];
     } catch (err) {
-      await query('ROLLBACK');
+      await client.query('ROLLBACK');
       throw err;
+    } finally {
+      client.release();
     }
   }
 
