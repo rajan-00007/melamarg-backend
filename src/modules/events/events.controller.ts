@@ -86,42 +86,83 @@ export class EventsController {
       if (user && user.role !== 'super_admin') {
         events = events.filter(event => event.created_by === user.id);
       } else if (!user) {
-        // Standard public user coordinates query
+        // Standard public user query
         const { latitude, longitude } = req.query;
-        if (latitude !== undefined && longitude !== undefined) {
-          const userLat = Number(latitude);
-          const userLng = Number(longitude);
-          
-          events = events.filter(event => {
-            // Retrieve metadata object
+        const userLat = latitude !== undefined && latitude !== '' ? Number(latitude) : null;
+        const userLng = longitude !== undefined && longitude !== '' ? Number(longitude) : null;
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const parseDate = (d: any): Date | null => {
+          if (!d) return null;
+          const parsed = new Date(d);
+          if (isNaN(parsed.getTime())) return null;
+          parsed.setHours(0, 0, 0, 0);
+          return parsed;
+        };
+
+        // Filter active events
+        const active = events.filter(event => {
+          // Public users only see published events
+          if (event.status !== 'published') return false;
+
+          // Date check
+          const evStart = parseDate(event.start_date);
+          const evEnd = parseDate(event.end_date);
+          const isDateActive = (evStart === null || evStart <= today) && (evEnd === null || evEnd >= today);
+          if (!isDateActive) return false;
+
+          // Radius check (only if coordinates are provided)
+          if (userLat !== null && userLng !== null) {
             const meta = typeof event.metadata === 'string' ? JSON.parse(event.metadata) : (event.metadata || {});
             const radius = meta.visibility ? Number(meta.visibility) : 0;
             
-            // If visibility radius is 0 or null, always show
-            if (radius <= 0) {
-              return true;
-            }
+            if (radius > 0) {
+              let lat = event.center_lat !== null && event.center_lat !== undefined ? Number(event.center_lat) : null;
+              let lng = event.center_lng !== null && event.center_lng !== undefined ? Number(event.center_lng) : null;
 
-            // Extract center coordinates, or compute them on-the-fly from the bbox if they are null in the database
-            let lat = event.center_lat !== null && event.center_lat !== undefined ? Number(event.center_lat) : null;
-            let lng = event.center_lng !== null && event.center_lng !== undefined ? Number(event.center_lng) : null;
+              if (lat === null && event.north !== null && event.south !== null) {
+                lat = (Number(event.north) + Number(event.south)) / 2;
+              }
+              if (lng === null && event.east !== null && event.west !== null) {
+                lng = (Number(event.east) + Number(event.west)) / 2;
+              }
 
-            if (lat === null && event.north !== null && event.south !== null) {
-              lat = (Number(event.north) + Number(event.south)) / 2;
+              if (lat !== null && lng !== null) {
+                const dist = getHaversineDistance(userLat, userLng, lat, lng);
+                return dist <= radius;
+              }
             }
-            if (lng === null && event.east !== null && event.west !== null) {
-              lng = (Number(event.east) + Number(event.west)) / 2;
-            }
+          }
+          return true;
+        });
 
-            // If we still can't calculate center coordinates (missing both center and bbox), always show
-            if (lat === null || lng === null) {
-              return true;
-            }
-            
-            const dist = getHaversineDistance(userLat, userLng, lat, lng);
-            return dist <= radius;
-          });
-        }
+        // Filter upcoming events
+        const upcoming = events.filter(event => {
+          if (event.status !== 'published') return false;
+
+          const evStart = parseDate(event.start_date);
+          return evStart !== null && evStart > today;
+        });
+
+        // Sort upcoming events by start date ascending
+        upcoming.sort((a, b) => {
+          const dateA = parseDate(a.start_date);
+          const dateB = parseDate(b.start_date);
+          if (dateA && dateB) return dateA.getTime() - dateB.getTime();
+          if (dateA) return -1;
+          if (dateB) return 1;
+          return 0;
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            active,
+            upcoming
+          }
+        });
       }
 
       return res.status(200).json({
