@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM public.ecr.aws/docker/library/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN npm prune --production
 # Stage 2: Production Runtime
 # Using plain alpine instead of node:alpine saves ~80-100MB 
 # because it doesn't include npm, yarn, and other build tools.
-FROM alpine:3.19
+FROM public.ecr.aws/docker/library/alpine:3.19
 
 WORKDIR /app
 
