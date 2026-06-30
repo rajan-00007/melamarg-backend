@@ -16,6 +16,7 @@ import zonesRoutes from './modules/zones/zones.routes';
 import { eventHighlightsRouter, generalHighlightsRouter } from './modules/highlights/highlights.routes';
 import meetupRoutes from './modules/meetup/meetup.routes';
 import feedbackRoutes from './modules/feedback/feedback.routes';
+import analyticsRoutes from './modules/analytics/analytics.routes';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use('/api/events/:eventId/highlights', eventHighlightsRouter);
 app.use('/api/highlights', generalHighlightsRouter);
 app.use('/api/meetup', meetupRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Basic route
 app.get('/', (req: Request, res: Response) => {
