@@ -4,6 +4,7 @@ import { eventsService } from './events.services';
 import { validateEventForPublish } from './events.validation';
 import { bundleService } from '../bundles/bundle.service';
 import { getHaversineDistance } from '../../utils/geo';
+import { uploadImage } from '../../providers/minioProvider';
 import logger from '../../utils/logger';
 
 export class EventsController {
@@ -237,6 +238,35 @@ export class EventsController {
     } catch (error: any) {
       logger.error('Error publishing event:', error);
       return res.status(500).json({ error: error.message || 'Failed to publish event' });
+    }
+  }
+
+  async uploadImage(req: AuthRequest, res: Response): Promise<any> {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Upload to MinIO under 'events' folder
+      const objectName = await uploadImage(file, 'events');
+
+      // Construct public MinIO access URL
+      const bucket = process.env.MINIO_BUCKET || 'melamarg';
+      const protocol = process.env.MINIO_USE_SSL === 'true' ? 'https' : 'http';
+      const port = process.env.MINIO_PORT ? `:${process.env.MINIO_PORT}` : '';
+      const minioUrl = `${protocol}://${process.env.MINIO_ENDPOINT}${port}/${bucket}/${objectName}`;
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          objectName,
+          imageUrl: minioUrl
+        }
+      });
+    } catch (error: any) {
+      logger.error('Error uploading event image to MinIO:', error);
+      return res.status(500).json({ error: 'Failed to upload event image' });
     }
   }
 }
